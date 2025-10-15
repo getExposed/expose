@@ -42,12 +42,12 @@ build: static_landing wire build_server build_client
 
 build_server:
 	@mkdir -p build
-	@echo "→ building expose-server (host)"
+	@echo "→ building expose-server (server)"
 	@CGO_ENABLED=0 go build $(LDFLAGS) -o ./build/expose-server ./cmd/expose-server
 
 build_client:
 	@mkdir -p build
-	@echo "→ building expose (host)"
+	@echo "→ building expose (client)"
 	@CGO_ENABLED=0 go build $(LDFLAGS) -o ./build/expose ./cmd/expose
 
 # -------------------------

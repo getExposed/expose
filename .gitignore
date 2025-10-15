@@ -1,0 +1,8 @@
+build/
+.DS_Store
+internal/ui/
+cmd/expose-server/wire_gen.go
+.idea
+container-config/id_rsa
+container-config/id_rsa.pub
+expose-data/expose-server.log

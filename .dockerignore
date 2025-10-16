@@ -1,9 +1,21 @@
-# runtime-only stuff — don’t send to the daemon
+# Runtime volumes / local data — keep out of the build context
 expose-data/
 container-config/
 
-# also ignore typical junk
-node_modules/
-dist/
-.git/
+# UI build outputs (rebuilt in Dockerfile anyway)
+web/expose/dist/
+
+# Node cache folders (rebuilt in Dockerfile)
+web/expose/node_modules/
+**/.pnpm-store/
+**/.yarn/*
+!**/.yarn/releases/**
+
+# Go build cache / outputs
 build/
+bin/
+
+# VCS & misc
+.git/
+.gitignore
+.DS_Store

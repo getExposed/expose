@@ -1,17 +1,22 @@
 ############################
 # UI build (Node)
 ############################
-FROM node:22.20.0-alpine@sha256:dbcedd8aeab47fbc0f4dd4bffa55b7c3c729a707875968d467aaaea42d6225af AS ui
-WORKDIR /ui
-# bring in the UI sources
-COPY web/expose ./web/expose
-RUN --mount=type=cache,target=/root/.npm \
-    sh -lc 'cd web/expose &&  yarn install && yarn build'
+FROM node:22.20.0-alpine AS ui
+WORKDIR /ui/web/expose
+
+# Better caching
+COPY web/expose/package.json web/expose/yarn.lock ./
+RUN --mount=type=cache,target=/root/.cache/yarn \
+    yarn install --frozen-lockfile
+
+# Copy sources & build
+COPY web/expose/ ./
+RUN yarn build
 
 ############################
-# Build stage
+# Build stage (Go)
 ############################
-FROM --platform=$BUILDPLATFORM golang:1.25.3-alpine@sha256:aee43c3ccbf24fdffb7295693b6e33b21e01baec1b2a55acc351fde345e9ec34 AS build
+FROM --platform=$BUILDPLATFORM golang:1.25.3-alpine AS build
 WORKDIR /src
 
 ARG BUILDPLATFORM
@@ -19,48 +24,58 @@ ARG TARGETPLATFORM
 ARG TARGETOS
 ARG TARGETARCH
 
-# Faster, repeatable builds
+# deps
 RUN apk add --no-cache ca-certificates git
-COPY go.mod go.sum ./
-RUN --mount=type=cache,target=/go/pkg/mod \
-    go mod download
 
-# Bring in the source
+# Go mod download (cached)
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+
+# Bring in the app sources
 COPY . .
+# Bring the built UI into the repo path expected by statik
 COPY --from=ui /ui/web/expose/dist ./web/expose/dist
 
-# Build args for version info (optional)
+# Metadata for -ldflags
 ARG VERSION_PATH=github.com/getExposed/expose/internal/version
 ARG GIT_COMMIT=unknown
 ARG UI_VERSION=container
 ARG BUILD_DATE=unknown
 
 ENV CGO_ENABLED=0
+ENV PATH="/go/bin:${PATH}"
+
+# Install codegen tools, generate assets, run wire, then build
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     set -eux; \
     echo "BUILDPLATFORM=$BUILDPLATFORM TARGETPLATFORM=$TARGETPLATFORM TARGETOS=$TARGETOS TARGETARCH=$TARGETARCH"; \
-    test -n "$TARGETOS" && test -n "$TARGETARCH"; \
-    GOOS="$TARGETOS" GOARCH="$TARGETARCH" \
+    # tools
+    go install github.com/jkuri/statik@latest; \
+    go install github.com/google/wire/cmd/wire@latest; \
+    # generate embedded UI package: github.com/getExposed/expose/internal/ui/landing
+    statik -f -dest ./internal/ui -p landing -src ./web/expose/dist; \
+    # generate wire code
+    wire ./cmd/expose-server; \
+    # derive GOOS/GOARCH from TARGETPLATFORM when unset
+    TO=${TARGETOS:-$(echo "$TARGETPLATFORM" | cut -d/ -f1)}; \
+    TA=${TARGETARCH:-$(echo "$TARGETPLATFORM" | cut -d/ -f2)}; \
+    echo "GOOS=$TO GOARCH=$TA"; \
+    GOOS="$TO" GOARCH="$TA" \
       go build -trimpath \
         -ldflags "-s -w -X ${VERSION_PATH}.GitCommit=${GIT_COMMIT} -X ${VERSION_PATH}.UIVersion=${UI_VERSION} -X ${VERSION_PATH}.BuildDate=${BUILD_DATE}" \
         -o /out/expose-server ./cmd/expose-server
 
- ############################
- # Runtime stage
- ############################
- FROM gcr.io/distroless/static:nonroot@sha256:e8a4044e0b4ae4257efa45fc026c0bc30ad320d43bd4c1a7d5271bd241e386d0 AS runtime
- WORKDIR /app
+############################
+# Runtime (distroless)
+############################
+FROM gcr.io/distroless/static:nonroot AS runtime
+WORKDIR /app
 
- # Copy the server
- COPY --from=build /out/expose-server /usr/local/bin/expose-server
+COPY --from=build /out/expose-server /usr/local/bin/expose-server
 
- # Ports the server listens on (HTTP and SSH)
- EXPOSE 2000 2200
+EXPOSE 2000 2200
+USER 65532:65532
 
- # Run as non-root
- USER 65532:65532
-
- # Expect a config at /etc/expose/expose-server.yaml (mount it)
- ENTRYPOINT ["/usr/local/bin/expose-server"]
- CMD ["-config", "/etc/expose/expose-server.yaml"]
+ENTRYPOINT ["/usr/local/bin/expose-server"]
+CMD ["-config", "/etc/expose/expose-server.yaml"]

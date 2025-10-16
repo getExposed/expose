@@ -50,7 +50,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     set -eux; \
     echo "BUILDPLATFORM=$BUILDPLATFORM TARGETPLATFORM=$TARGETPLATFORM TARGETOS=$TARGETOS TARGETARCH=$TARGETARCH"; \
-    # tools
+    # tools install
     go install github.com/jkuri/statik@latest; \
     go install github.com/google/wire/cmd/wire@latest; \
     # generate embedded UI package: github.com/getExposed/expose/internal/ui/landing

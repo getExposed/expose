@@ -90,7 +90,7 @@ release: static_landing wire $(RELEASE_BINS)
 
 # -------- rules generator (no empty pairs, honors EXCLUDE) --------
 define GEN_RULES
-$(RELEASE_DIR)/expose$(1)_$(2):
+$(RELEASE_DIR)/expose_$(1)_$(2):
 	@mkdir -p $(RELEASE_DIR)
 	@echo "→ building expose for $(1)/$(2)"
 	@CGO_ENABLED=0 GOOS=$(1) GOARCH=$(2) go build $(LDFLAGS) -o $$@ ./cmd/expose

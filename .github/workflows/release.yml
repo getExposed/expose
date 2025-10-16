@@ -20,12 +20,15 @@ jobs:
 
     env:
       CGO_ENABLED: "0"
+      # Use the tag name when building from a tag or release; otherwise let Makefile fall back.
+      VERSION: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'release' && github.event.release.tag_name) || '' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
         with:
           submodules: recursive
+          fetch-depth: 0  # important so git tags are available
 
       - name: Set up Go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
@@ -45,12 +48,16 @@ jobs:
       - name: Install system deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential
+          sudo apt-get install -y build-essential jq
 
       - name: Install project tools & deps
         run: |
           make install_dependencies
+
+      - name: Build (host)
+        run: |
           make build
+
       - name: Tidy
         run: |
           go mod tidy

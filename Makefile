@@ -4,12 +4,19 @@
 
 UI_VERSION := $(shell cat web/expose/package.json | grep version | head -1 | awk -F: '{ print $$2 }' | sed 's/[\",]//g' | tr -d '[[:space:]]')
 VERSION_PATH := github.com/getExposed/expose/internal/version
-GIT_COMMIT := $(shell git rev-list -1 HEAD)
-BUILD_DATE := $(shell date +%FT%T%z)
+
+VERSION ?= $(shell (git describe --tags --exact-match 2>/dev/null || git describe --tags --abbrev=0 2>/dev/null || echo dev))
+
+GIT_COMMIT  := $(shell git rev-parse --short HEAD)
+BUILD_DATE  := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 RELEASE_DIR := build/release
 
-LDFLAGS := -ldflags "-X $(VERSION_PATH).GitCommit=$(GIT_COMMIT) -X $(VERSION_PATH).UIVersion=$(UI_VERSION) -X $(VERSION_PATH).BuildDate=$(BUILD_DATE)"
-
+LDFLAGS := -ldflags "\
+  -X $(VERSION_PATH).Version=$(VERSION) \
+  -X $(VERSION_PATH).UIVersion=$(UI_VERSION) \
+  -X $(VERSION_PATH).GitCommit=$(GIT_COMMIT) \
+  -X $(VERSION_PATH).BuildDate=$(BUILD_DATE) \
+"
 # -------------------------
 # Target matrices
 # -------------------------

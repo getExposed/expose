@@ -1,8 +1,7 @@
 package version
 
-const Version = "dev"
-
 var (
+	Version   = "dev"
 	UIVersion string
 	GitCommit string
 	BuildDate string

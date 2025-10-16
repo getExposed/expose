@@ -49,7 +49,7 @@ jobs:
         uses: docker/metadata-action@c1e51972afc2121e065aed6d45c65596fe445f3f # v5
         with:
           images: |
-            ghcr.io/${{ steps.lc.outputs.owner_lc }}/drill-server
+            ghcr.io/${{ steps.lc.outputs.owner_lc }}/expose-server
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=ref,event=tag

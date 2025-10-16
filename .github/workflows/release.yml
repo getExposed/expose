@@ -1,0 +1,79 @@
+name: Build & Publish Release Binaries
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    env:
+      CGO_ENABLED: "0"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
+        with:
+          go-version: "1.25.2"
+          cache: true
+
+      - name: Set up Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "22.20.0"
+          cache: "npm"
+          cache-dependency-path: |
+            web/drill/yarn.lock
+      - run: npm i -g yarn
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+
+      - name: Install project tools & deps
+        run: |
+          make install_dependencies
+          make build
+      - name: Tidy
+        run: |
+          go mod tidy
+
+      - name: Build multi-arch release
+        run: |
+          make release
+
+      - name: List artifacts
+        run: ls -lah build/release || true
+
+      - name: Upload artifacts to workflow
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-binaries
+          path: build/release/*
+
+      - name: Publish assets to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
+        uses: softprops/action-gh-release@6da8fa9354ddfdc4aeace5fc48d7f679b5214090 # v2
+        with:
+          files: build/release/*
+          make_latest: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,9 @@
+# runtime-only stuff — don’t send to the daemon
+expose-data/
+container-config/
+
+# also ignore typical junk
+node_modules/
+dist/
+.git/
+build/

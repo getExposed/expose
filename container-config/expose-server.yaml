@@ -1,0 +1,13 @@
+domain: localhost
+httpaddr: 0.0.0.0:2000
+sshaddr: 0.0.0.0:2200
+log:
+  filename: /data/expose-server.log   # optional, or omit if stdout is enough
+  level: debug
+  max_age: 3
+  max_backups: 3
+  max_size: 500
+  stdout: true
+password: ""
+privatekey: /data/expose/id_rsa
+publickey: /data/expose/id_rsa.pub

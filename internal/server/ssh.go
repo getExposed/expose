@@ -1,10 +1,16 @@
 package server
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -63,17 +69,68 @@ func NewSSHServer(opts *Options, logger *zap.SugaredLogger) *SSHServer {
 	}
 }
 
+// ensureHostKey loads an existing private key from disk, or creates one if missing.
+// It returns an ssh.Signer ready to add to ssh.ServerConfig.
+func ensureHostKey(path string, log *zap.SugaredLogger) (ssh.Signer, error) {
+	// Make sure the directory exists (if a directory is included in the path)
+	if dir := filepath.Dir(path); dir != "." && dir != "/" {
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			return nil, err
+		}
+	}
+
+	// Try to read existing key
+	keyBytes, err := os.ReadFile(path)
+	if err == nil {
+		signer, perr := ssh.ParsePrivateKey(keyBytes)
+		if perr == nil {
+			return signer, nil
+		}
+		// If file exists but is unreadable/unparseable, surface the error
+		var pe *ssh.PassphraseMissingError
+		if errors.As(perr, &pe) {
+			// Your file seems passphrase-protected; either handle passphrases or fail.
+			return nil, perr
+		}
+		return nil, perr
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+
+	// Key doesn't exist: create a new RSA-4096 host key
+	log.Infof("no SSH host key at %q; generating a new one", path)
+	privKey, genErr := rsa.GenerateKey(rand.Reader, 4096)
+	if genErr != nil {
+		return nil, genErr
+	}
+
+	// Encode private key (PKCS#1 PEM)
+	privDER := x509.MarshalPKCS1PrivateKey(privKey)
+	privPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: privDER})
+
+	// Write with 0600 permissions
+	if writeErr := os.WriteFile(path, privPEM, 0o600); writeErr != nil {
+		return nil, writeErr
+	}
+
+	// Write public key (authorized_keys format) as a convenience
+	pub, _ := ssh.NewPublicKey(&privKey.PublicKey)
+	pubBytes := ssh.MarshalAuthorizedKey(pub)
+	_ = os.WriteFile(path+".pub", pubBytes, 0o644) // best-effort
+
+	// Return signer from in-memory key
+	return ssh.NewSignerFromKey(privKey)
+}
+
 // Run starts the SSH server.
 func (s *SSHServer) Run() error {
-	privateKeyContent, err := os.ReadFile(s.opts.PrivateKey)
+	signer, err := ensureHostKey(s.opts.PrivateKey, s.logger)
 	if err != nil {
 		return err
 	}
-	private, err := ssh.ParsePrivateKey(privateKeyContent)
-	if err != nil {
-		return err
-	}
-	s.config.AddHostKey(private)
+	s.config.AddHostKey(signer)
+
 	s.addr = s.opts.SSHAddr
 	s.domain = s.opts.Domain
 	s.password = s.opts.Password

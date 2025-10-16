@@ -2,7 +2,6 @@ package server
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 
@@ -19,10 +18,9 @@ type HTTPServer struct {
 
 func NewHTTPServer(logger *zap.SugaredLogger) *HTTPServer {
 	return &HTTPServer{
-		Server:    &http.Server{},
-		running:   make(chan error, 1),
-		logger:    logger,
-		isRunning: false,
+		Server:  &http.Server{},
+		running: make(chan error, 1),
+		logger:  logger,
 	}
 }
 
@@ -50,9 +48,6 @@ func (h *HTTPServer) Close() error {
 }
 
 func (h *HTTPServer) Wait() error {
-	if !h.isRunning {
-		return fmt.Errorf("already closed")
-	}
 	return <-h.running
 }
 

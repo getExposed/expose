@@ -1,7 +1,7 @@
 ############################
 # UI build (Node)
 ############################
-FROM node:22.20.0-alpine AS ui
+FROM node:22.20.0-alpine@sha256:dbcedd8aeab47fbc0f4dd4bffa55b7c3c729a707875968d467aaaea42d6225af AS ui
 WORKDIR /ui/web/expose
 
 # Better caching
@@ -16,7 +16,7 @@ RUN yarn build
 ############################
 # Build stage (Go)
 ############################
-FROM --platform=$BUILDPLATFORM golang:1.25.3-alpine AS build
+FROM --platform=$BUILDPLATFORM golang:1.25.3-alpine@sha256:aee43c3ccbf24fdffb7295693b6e33b21e01baec1b2a55acc351fde345e9ec34 AS build
 WORKDIR /src
 
 ARG BUILDPLATFORM
@@ -69,7 +69,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 ############################
 # Runtime (distroless)
 ############################
-FROM gcr.io/distroless/static:nonroot AS runtime
+FROM gcr.io/distroless/static:nonroot@sha256:e8a4044e0b4ae4257efa45fc026c0bc30ad320d43bd4c1a7d5271bd241e386d0 AS runtime
 WORKDIR /app
 
 COPY --from=build /out/expose-server /usr/local/bin/expose-server

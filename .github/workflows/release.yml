@@ -30,7 +30,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6
         with:
-          go-version: "1.25.2"
+          go-version: "1.25.3"
           cache: true
 
       - name: Set up Node
@@ -39,7 +39,7 @@ jobs:
           node-version: "22.20.0"
           cache: "npm"
           cache-dependency-path: |
-            web/drill/yarn.lock
+            web/expose/yarn.lock
       - run: npm i -g yarn
 
       - name: Install system deps

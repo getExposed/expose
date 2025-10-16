@@ -29,5 +29,5 @@ func TempDir() (string, error) {
 	} else {
 		tmp = "/tmp"
 	}
-	return os.MkdirTemp(tmp, "drill")
+	return os.MkdirTemp(tmp, "expose")
 }

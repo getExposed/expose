@@ -11,7 +11,7 @@ RUN --mount=type=cache,target=/root/.npm \
 ############################
 # Build stage
 ############################
-FROM --platform=$BUILDPLATFORM golang:1.25.3-alpine AS build
+FROM --platform=$BUILDPLATFORM golang:1.25.3-alpine@sha256:aee43c3ccbf24fdffb7295693b6e33b21e01baec1b2a55acc351fde345e9ec34 AS build
 WORKDIR /src
 
 ARG BUILDPLATFORM

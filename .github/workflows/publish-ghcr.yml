@@ -2,11 +2,9 @@ name: Build & Publish to GHCR
 
 on:
   push:
-    branches: [ "main" ]
     tags: [ "v*" ]     # publish versioned images on tags like v1.2.3
   release:
     types: [published] # also publish when a release is published
-  workflow_dispatch:    # allow manual runs
 
 permissions:
   contents: read

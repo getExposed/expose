@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -19,9 +20,9 @@ type HTTPServer struct {
 func NewHTTPServer(logger *zap.SugaredLogger) *HTTPServer {
 	return &HTTPServer{
 		Server:    &http.Server{},
-		running:   make(chan error),
+		running:   make(chan error, 1),
 		logger:    logger,
-		isRunning: true,
+		isRunning: false,
 	}
 }
 
@@ -32,6 +33,7 @@ func (h *HTTPServer) Run(addr string, handler http.Handler) error {
 	}
 	h.Handler = handler
 	h.listener = listener
+	h.isRunning = true
 
 	h.logger.Infof("starting HTTP server on %s", addr)
 
@@ -41,7 +43,10 @@ func (h *HTTPServer) Run(addr string, handler http.Handler) error {
 
 func (h *HTTPServer) Close() error {
 	h.closeWith(nil)
-	return h.listener.Close()
+	if h.listener != nil {
+		return h.listener.Close()
+	}
+	return nil
 }
 
 func (h *HTTPServer) Wait() error {
@@ -49,4 +54,21 @@ func (h *HTTPServer) Wait() error {
 		return fmt.Errorf("already closed")
 	}
 	return <-h.running
+}
+
+func (h *HTTPServer) closeWith(err error) {
+	if !h.isRunning {
+		return
+	}
+	h.isRunning = false
+
+	if errors.Is(err, http.ErrServerClosed) {
+		err = nil
+	}
+
+	// Non-blocking send so we don't deadlock if nobody is waiting yet/already received.
+	select {
+	case h.running <- err:
+	default:
+	}
 }

@@ -14,6 +14,6 @@ var providerSet = wire.NewSet(
 	server.ProviderSet,
 )
 
-func CreateApp(cfg string) (*server.DrillServer, error) {
+func CreateApp(cfg string) (*server.ExposeServer, error) {
 	panic(wire.Build(providerSet))
 }

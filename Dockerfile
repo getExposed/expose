@@ -1,7 +1,7 @@
 ############################
 # UI build (Node)
 ############################
-FROM node:24.11.0-alpine@sha256:f36fed0b2129a8492535e2853c64fbdbd2d29dc1219ee3217023ca48aebd3787 AS ui
+FROM node:24.11.1-alpine@sha256:682368d8253e0c3364b803956085c456a612d738bd635926d73fa24db3ce53d7 AS ui
 WORKDIR /ui/web/expose
 
 # Better caching
@@ -16,7 +16,7 @@ RUN yarn build
 ############################
 # Build stage (Go)
 ############################
-FROM --platform=$BUILDPLATFORM golang:1.25.3-alpine@sha256:aee43c3ccbf24fdffb7295693b6e33b21e01baec1b2a55acc351fde345e9ec34 AS build
+FROM --platform=$BUILDPLATFORM golang:1.25.5-alpine@sha256:26111811bc967321e7b6f852e914d14bede324cd1accb7f81811929a6a57fea9 AS build
 WORKDIR /src
 
 ARG BUILDPLATFORM

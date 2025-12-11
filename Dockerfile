@@ -1,7 +1,7 @@
 ############################
 # UI build (Node)
 ############################
-FROM node:24.11.0-alpine@sha256:f36fed0b2129a8492535e2853c64fbdbd2d29dc1219ee3217023ca48aebd3787 AS ui
+FROM node:24.12.0-alpine@sha256:eb37f58646a901dc7727cf448cae36daaefaba79de33b5058dab79aa4c04aefb AS ui
 WORKDIR /ui/web/expose
 
 # Better caching

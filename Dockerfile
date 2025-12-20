@@ -1,7 +1,7 @@
 ############################
 # UI build (Node)
 ############################
-FROM node:24.12.0-alpine@sha256:eb37f58646a901dc7727cf448cae36daaefaba79de33b5058dab79aa4c04aefb AS ui
+FROM node:24.12.0-alpine@sha256:c921b97d4b74f51744057454b306b418cf693865e73b8100559189605f6955b8 AS ui
 WORKDIR /ui/web/expose
 
 # Better caching
@@ -69,7 +69,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 ############################
 # Runtime (distroless)
 ############################
-FROM gcr.io/distroless/static:nonroot@sha256:e8a4044e0b4ae4257efa45fc026c0bc30ad320d43bd4c1a7d5271bd241e386d0 AS runtime
+FROM gcr.io/distroless/static:nonroot@sha256:2b7c93f6d6648c11f0e80a48558c8f77885eb0445213b8e69a6a0d7c89fc6ae4 AS runtime
 WORKDIR /app
 
 COPY --from=build /out/expose-server /usr/local/bin/expose-server

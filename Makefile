@@ -39,7 +39,7 @@ RELEASE_BINS := \
 # Phony targets
 # -------------------------
 
-.PHONY: build build_server build_client build_ui_landing wire static_landing install_dependencies clean release
+.PHONY: build build_server build_client build_ui_landing wire static_landing install_dependencies clean release universal_macos
 
 # -------------------------
 # Default build (host platform)
@@ -91,6 +91,18 @@ clean:
 # -------------------------
 # Multi-arch release (no gox)
 # -------------------------
+
+universal_macos: $(RELEASE_DIR)/expose_darwin_amd64 $(RELEASE_DIR)/expose_darwin_arm64 \
+                 $(RELEASE_DIR)/expose-server_darwin_amd64 $(RELEASE_DIR)/expose-server_darwin_arm64
+	@echo "→ building macOS universal binaries"
+	@lipo -create -output $(RELEASE_DIR)/expose_darwin_universal \
+		$(RELEASE_DIR)/expose_darwin_amd64 $(RELEASE_DIR)/expose_darwin_arm64
+	@lipo -create -output $(RELEASE_DIR)/expose-server_darwin_universal \
+		$(RELEASE_DIR)/expose-server_darwin_amd64 $(RELEASE_DIR)/expose-server_darwin_arm64
+	@echo "→ universal archs:"
+	@lipo -archs $(RELEASE_DIR)/expose_darwin_universal
+	@lipo -archs $(RELEASE_DIR)/expose-server_darwin_universal
+
 
 release: static_landing wire $(RELEASE_BINS)
 	@echo "✓ release artifacts in $(RELEASE_DIR)"

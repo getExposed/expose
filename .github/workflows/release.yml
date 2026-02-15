@@ -15,6 +15,48 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  macos-universal:
+    runs-on: macos-latest
+    needs: build-and-publish
+    permissions:
+      contents: write
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v6
+        with:
+          name: release-binaries
+          path: build/release
+
+      - name: Make universal binaries
+        run: |
+          set -euo pipefail
+          ls -la build/release
+          lipo -create -output build/release/expose_darwin_universal \
+            build/release/expose_darwin_amd64 build/release/expose_darwin_arm64
+          lipo -create -output build/release/expose-server_darwin_universal \
+            build/release/expose-server_darwin_amd64 build/release/expose-server_darwin_arm64
+          echo "expose universal archs: $(lipo -archs build/release/expose_darwin_universal)"
+          echo "server universal archs: $(lipo -archs build/release/expose-server_darwin_universal)"
+          chmod +x build/release/expose_darwin_universal build/release/expose-server_darwin_universal
+
+      - name: Upload universal artifacts to workflow
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-binaries-macos-universal
+          path: |
+            build/release/expose_darwin_universal
+            build/release/expose-server_darwin_universal
+
+      - name: Publish universal assets to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/release/expose_darwin_universal
+            build/release/expose-server_darwin_universal
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
   build-and-publish:
     runs-on: ubuntu-latest
 

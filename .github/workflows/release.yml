@@ -115,7 +115,7 @@ jobs:
           chmod +x build/release/expose_darwin_universal build/release/expose-server_darwin_universal
 
       - name: Upload universal artifacts to workflow
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: release-binaries-macos-universal
           path: |
@@ -124,7 +124,7 @@ jobs:
 
       - name: Publish universal assets to GitHub Release
         if: github.ref_type == 'tag' || github.event_name == 'release'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2
         with:
           tag_name: ${{ github.event.release.tag_name || github.ref_name }}
           files: |

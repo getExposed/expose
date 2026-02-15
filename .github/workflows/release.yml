@@ -21,7 +21,6 @@ jobs:
 
     env:
       CGO_ENABLED: "0"
-      # Prefer the release tag (release event), else the pushed tag (push event).
       VERSION: ${{ github.event.release.tag_name || github.ref_name }}
 
     steps:
@@ -74,11 +73,11 @@ jobs:
           name: release-binaries
           path: build/release/*
 
-      # If this was a tag push (not a published Release), ensure a Release exists so uploads work.
       - name: Ensure GitHub Release exists (tag push)
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
@@ -88,13 +87,13 @@ jobs:
         if: (github.event_name == 'release') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ github.event.release.tag_name || github.ref_name }}
         run: |
           set -euo pipefail
           echo "Publishing assets to release: $TAG"
           ls -la build/release
 
-          # Replace existing assets in-place; retry because GitHub can 5xx/timeout.
           for attempt in 1 2 3 4 5; do
             if gh release upload "$TAG" build/release/* --clobber; then
               echo "Upload OK"
@@ -115,6 +114,12 @@ jobs:
       contents: write
 
     steps:
+      # ✅ Needed so `gh` doesn't complain about missing .git
+      - name: Checkout (for gh context)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 1
+
       - name: Download release artifacts
         uses: actions/download-artifact@v6
         with:
@@ -126,11 +131,9 @@ jobs:
           set -euo pipefail
           ls -la build/release
 
-          # Build universal client
           lipo -create -output build/release/expose_darwin_universal \
             build/release/expose_darwin_amd64 build/release/expose_darwin_arm64
 
-          # Build universal server
           lipo -create -output build/release/expose-server_darwin_universal \
             build/release/expose-server_darwin_amd64 build/release/expose-server_darwin_arm64
 
@@ -146,10 +149,21 @@ jobs:
             build/release/expose_darwin_universal
             build/release/expose-server_darwin_universal
 
+      - name: Ensure GitHub Release exists (tag push)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --generate-notes
+
       - name: Publish universal assets to GitHub Release (gh)
         if: (github.event_name == 'release') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ github.event.release.tag_name || github.ref_name }}
         run: |
           set -euo pipefail

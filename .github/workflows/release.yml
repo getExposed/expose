@@ -16,12 +16,13 @@ concurrency:
 
 jobs:
   build-and-publish:
+    name: Build multi-arch (linux runner) + upload to Release
     runs-on: ubuntu-latest
 
     env:
       CGO_ENABLED: "0"
-      # Use the tag name when building from a tag or release; otherwise let Makefile fall back.
-      VERSION: ${{ github.event.release.tag_name || github.ref_name || '' }}
+      # Prefer the release tag (release event), else the pushed tag (push event).
+      VERSION: ${{ github.event.release.tag_name || github.ref_name }}
 
     steps:
       - name: Checkout
@@ -73,18 +74,41 @@ jobs:
           name: release-binaries
           path: build/release/*
 
-      - name: Publish assets to GitHub Release
-        if: github.ref_type == 'tag' || github.event_name == 'release'
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2
-        with:
-          tag_name: ${{ github.event.release.tag_name || github.ref_name }}
-          files: build/release/*
-          make_latest: true
-          generate_release_notes: true
+      # If this was a tag push (not a published Release), ensure a Release exists so uploads work.
+      - name: Ensure GitHub Release exists (tag push)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --generate-notes
+
+      - name: Publish assets to GitHub Release (gh)
+        if: (github.event_name == 'release') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name || github.ref_name }}
+        run: |
+          set -euo pipefail
+          echo "Publishing assets to release: $TAG"
+          ls -la build/release
+
+          # Replace existing assets in-place; retry because GitHub can 5xx/timeout.
+          for attempt in 1 2 3 4 5; do
+            if gh release upload "$TAG" build/release/* --clobber; then
+              echo "Upload OK"
+              exit 0
+            fi
+            echo "Upload failed (attempt $attempt). Retrying in 5s..."
+            sleep 5
+          done
+
+          echo "Upload failed after retries"
+          exit 1
 
   macos-universal:
+    name: Build macOS universal (lipo) + upload to Release
     runs-on: macos-latest
     needs: build-and-publish
     permissions:
@@ -92,7 +116,7 @@ jobs:
 
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        uses: actions/download-artifact@v6
         with:
           name: release-binaries
           path: build/release
@@ -102,33 +126,47 @@ jobs:
           set -euo pipefail
           ls -la build/release
 
-          # Create universal (fat) binaries from amd64 + arm64
+          # Build universal client
           lipo -create -output build/release/expose_darwin_universal \
             build/release/expose_darwin_amd64 build/release/expose_darwin_arm64
 
+          # Build universal server
           lipo -create -output build/release/expose-server_darwin_universal \
             build/release/expose-server_darwin_amd64 build/release/expose-server_darwin_arm64
 
           echo "expose universal archs: $(lipo -archs build/release/expose_darwin_universal)"
           echo "server universal archs: $(lipo -archs build/release/expose-server_darwin_universal)"
-
           chmod +x build/release/expose_darwin_universal build/release/expose-server_darwin_universal
 
       - name: Upload universal artifacts to workflow
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@v6
         with:
           name: release-binaries-macos-universal
           path: |
             build/release/expose_darwin_universal
             build/release/expose-server_darwin_universal
 
-      - name: Publish universal assets to GitHub Release
-        if: github.ref_type == 'tag' || github.event_name == 'release'
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2
-        with:
-          tag_name: ${{ github.event.release.tag_name || github.ref_name }}
-          files: |
-            build/release/expose_darwin_universal
-            build/release/expose-server_darwin_universal
+      - name: Publish universal assets to GitHub Release (gh)
+        if: (github.event_name == 'release') || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name || github.ref_name }}
+        run: |
+          set -euo pipefail
+          echo "Publishing universal assets to release: $TAG"
+          ls -la build/release
+
+          for attempt in 1 2 3 4 5; do
+            if gh release upload "$TAG" \
+              build/release/expose_darwin_universal \
+              build/release/expose-server_darwin_universal \
+              --clobber; then
+              echo "Upload OK"
+              exit 0
+            fi
+            echo "Upload failed (attempt $attempt). Retrying in 5s..."
+            sleep 5
+          done
+
+          echo "Upload failed after retries"
+          exit 1

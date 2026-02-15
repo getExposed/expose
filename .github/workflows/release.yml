@@ -15,62 +15,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  macos-universal:
-    runs-on: macos-latest
-    needs: build-and-publish
-    permissions:
-      contents: write
-    steps:
-      - name: Download release artifacts
-        uses: actions/download-artifact@v6
-        with:
-          name: release-binaries
-          path: build/release
-
-      - name: Make universal binaries
-        run: |
-          set -euo pipefail
-          ls -la build/release
-          lipo -create -output build/release/expose_darwin_universal \
-            build/release/expose_darwin_amd64 build/release/expose_darwin_arm64
-          lipo -create -output build/release/expose-server_darwin_universal \
-            build/release/expose-server_darwin_amd64 build/release/expose-server_darwin_arm64
-          echo "expose universal archs: $(lipo -archs build/release/expose_darwin_universal)"
-          echo "server universal archs: $(lipo -archs build/release/expose-server_darwin_universal)"
-          chmod +x build/release/expose_darwin_universal build/release/expose-server_darwin_universal
-
-      - name: Upload universal artifacts to workflow
-        uses: actions/upload-artifact@v6
-        with:
-          name: release-binaries-macos-universal
-          path: |
-            build/release/expose_darwin_universal
-            build/release/expose-server_darwin_universal
-
-      - name: Publish universal assets to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            build/release/expose_darwin_universal
-            build/release/expose-server_darwin_universal
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
   build-and-publish:
     runs-on: ubuntu-latest
 
     env:
       CGO_ENABLED: "0"
       # Use the tag name when building from a tag or release; otherwise let Makefile fall back.
-      VERSION: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event_name == 'release' && github.event.release.tag_name) || '' }}
+      VERSION: ${{ github.event.release.tag_name || github.ref_name || '' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           submodules: recursive
-          fetch-depth: 0  # important so git tags are available
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6
@@ -85,7 +43,9 @@ jobs:
           cache: "yarn"
           cache-dependency-path: |
             web/expose/yarn.lock
-      - run: npm i -g yarn
+
+      - name: Install yarn
+        run: npm i -g yarn
 
       - name: Install system deps
         run: |
@@ -93,20 +53,16 @@ jobs:
           sudo apt-get install -y build-essential jq
 
       - name: Install project tools & deps
-        run: |
-          make install_dependencies
+        run: make install_dependencies
 
       - name: Build (host)
-        run: |
-          make build
+        run: make build
 
       - name: Tidy
-        run: |
-          go mod tidy
+        run: go mod tidy
 
       - name: Build multi-arch release
-        run: |
-          make release
+        run: make release
 
       - name: List artifacts
         run: ls -lah build/release || true
@@ -118,11 +74,61 @@ jobs:
           path: build/release/*
 
       - name: Publish assets to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
+        if: github.ref_type == 'tag' || github.event_name == 'release'
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2
         with:
+          tag_name: ${{ github.event.release.tag_name || github.ref_name }}
           files: build/release/*
           make_latest: true
           generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  macos-universal:
+    runs-on: macos-latest
+    needs: build-and-publish
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v6
+        with:
+          name: release-binaries
+          path: build/release
+
+      - name: Make universal binaries
+        run: |
+          set -euo pipefail
+          ls -la build/release
+
+          # Create universal (fat) binaries from amd64 + arm64
+          lipo -create -output build/release/expose_darwin_universal \
+            build/release/expose_darwin_amd64 build/release/expose_darwin_arm64
+
+          lipo -create -output build/release/expose-server_darwin_universal \
+            build/release/expose-server_darwin_amd64 build/release/expose-server_darwin_arm64
+
+          echo "expose universal archs: $(lipo -archs build/release/expose_darwin_universal)"
+          echo "server universal archs: $(lipo -archs build/release/expose-server_darwin_universal)"
+
+          chmod +x build/release/expose_darwin_universal build/release/expose-server_darwin_universal
+
+      - name: Upload universal artifacts to workflow
+        uses: actions/upload-artifact@v6
+        with:
+          name: release-binaries-macos-universal
+          path: |
+            build/release/expose_darwin_universal
+            build/release/expose-server_darwin_universal
+
+      - name: Publish universal assets to GitHub Release
+        if: github.ref_type == 'tag' || github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name || github.ref_name }}
+          files: |
+            build/release/expose_darwin_universal
+            build/release/expose-server_darwin_universal
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -3,7 +3,7 @@ module github.com/getExposed/expose
 go 1.26.0
 
 require (
-	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/charmbracelet/lipgloss/v2 v2.0.2
 	github.com/dustin/go-humanize v1.0.1
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/google/wire v0.7.0

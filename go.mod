@@ -1,6 +1,6 @@
 module github.com/getExposed/expose
 
-go 1.26.0
+go 1.26.2
 
 require (
 	github.com/charmbracelet/lipgloss v1.1.0

@@ -142,7 +142,7 @@ jobs:
           chmod +x build/release/expose_darwin_universal build/release/expose-server_darwin_universal
 
       - name: Upload universal artifacts to workflow
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: release-binaries-macos-universal
           path: |

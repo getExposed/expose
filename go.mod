@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/dustin/go-humanize v1.0.1
-	github.com/felixge/httpsnoop v1.0.4
+	github.com/felixge/httpsnoop v1.1.0
 	github.com/google/wire v0.7.0
 	github.com/jkuri/statik v0.3.0
 	github.com/mitchellh/go-homedir v1.1.0

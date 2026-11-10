@@ -706,7 +706,7 @@
     "@tailwindcss/oxide-win32-arm64-msvc" "4.3.5"
     "@tailwindcss/oxide-win32-x64-msvc" "4.3.5"
 
-"@tailwindcss/vite@^4.3.4":
+"@tailwindcss/vite@^4.3.5":
   version "4.3.5"
   resolved "https://registry.yarnpkg.com/@tailwindcss/vite/-/vite-4.3.5.tgz#b6d14b0a78b419143b27a43db6756f3e8858d643"
   integrity sha512-BCNiY0a1ZjdOHVqw7kyb7U72BwfMF3dfUuN+tQsLWky/J5JOI/r7abibglXfygrZhVO/3u3V+E25kkKTeMkXaQ==
@@ -1635,7 +1635,7 @@ source-map-js@^1.2.1, source-map-js@^1.2.2:
   resolved "https://registry.yarnpkg.com/source-map-js/-/source-map-js-1.2.2.tgz#79fb88d97535a21cb27162cb05d211b67acea4ab"
   integrity sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==
 
-tailwindcss@4.3.5, tailwindcss@^4.3.4:
+tailwindcss@4.3.5, tailwindcss@^4.3.5:
   version "4.3.5"
   resolved "https://registry.yarnpkg.com/tailwindcss/-/tailwindcss-4.3.5.tgz#91ac1f2486f3dff8747aebd0a687abd5955035b8"
   integrity sha512-FcQk9BuffmEHJP2G0XmB2SplU1aLTI7j07Kunk+U74Ny+XiWOtzXz9aujFZ/avntw1e2cOv/3PkgzflQ7gX2vQ==
